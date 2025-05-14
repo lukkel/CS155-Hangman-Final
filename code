@@ -1,134 +1,226 @@
          .ORIG x3000
 
-; --- Prompt Player One for the secret word ---
-        LEA R0, PROMPT1
-        PUTS
+;******************* Get Word *******************
+; Prompts Player 1 to enter the secret word.
+; Stores each character in WORD memory.
+; Stores '_' in DISPLAY memory to represent hidden letters.
+; R0 - Input/output character
+; R1 - Comparison / utility
+; R2 - Word memory pointer
+; R3 - Display memory pointer
+; R4 - ASCII '_'
+;*******************************************************
+        LEA R0, PROMPT1        ; Load prompt string
+        PUTS                   ; Print it to screen
 
-        LD R2, WORD_PTR        ; R2 = word buffer
-        LD R3, DISP_PTR        ; R3 = display buffer
-        LD R4, UNDERSCORE      ; R4 = ASCII '_'
+        LD R2, WORD_PTR        ; Load pointer to WORD buffer
+        LD R3, DISP_PTR        ; Load pointer to DISPLAY buffer
+        LD R4, UNDERSCORE      ; Load ASCII underscore into R4
 
 InputLoop
-   GETC
-   ADD R1, R0, #-10       ; Enter pressed?
-   BRz AskLength
+        GETC                   ; Get one character from keyboard
+        ADD R1, R0, #-10       ; Check if it's ENTER (ASCII 10)
+        BRz AskLength          ; If yes, end word input
 
-   STR R0, R2, #0         ; Store char in word
-   STR R4, R3, #0         ; Store _ in display
+        STR R0, R2, #0         ; Store character into WORD buffer
+        STR R4, R3, #0         ; Store '_' into DISPLAY buffer
 
-   LD R0, UNDERSCORE
-   OUT
-   LD R0, SPACE
-   OUT
+        LD R0, UNDERSCORE
+        OUT                    ; Print underscore
+        LD R0, SPACE
+        OUT                    ; Print space after underscore
 
-   ADD R2, R2, #1
-   ADD R3, R3, #1
-   BRnzp InputLoop
+        ADD R2, R2, #1         ; Advance WORD pointer
+        ADD R3, R3, #1         ; Advance DISPLAY pointer
+        BRnzp InputLoop        ; Loop to get next character
 
+;******************* AskLength *******************
+; Asks for length of the word.
+; Converts ASCII digit to number and stores in WORDLEN.
+; Also resets WRONGCOUNT.
+; R0 - Input character
+; R1 - For ASCII conversion
+;************************************************
 AskLength
-   AND R0, R0, #0
-   STR R0, R2, #0         ; Null-terminate word
-   STR R0, R3, #0         ; Null-terminate display
+        AND R0, R0, #0
+        STR R0, R2, #0         ; Null-terminate WORD buffer
+        STR R0, R3, #0         ; Null-terminate DISPLAY buffer
 
-   LEA R0, PROMPT2
-   PUTS
+        LEA R0, PROMPT2
+        PUTS                   ; Ask for word length
 
-   GETC
-   OUT                    ; Echo input
+        GETC                   ; Get ASCII digit (e.g., '5')
+        OUT                    ; Echo it
 
-   ; Convert ASCII digit to integer
-   LD R1, ASCII_ZERO
-   NOT R1, R1
-   ADD R1, R1, #1         ; R1 = -ASCII_ZERO
-   ADD R0, R0, R1         ; R0 = ASCII input - '0'
+        LD R1, ASCII_ZERO
+        NOT R1, R1
+        ADD R1, R1, #1         ; R1 = -'0'
+        ADD R0, R0, R1         ; R0 = numeric value (0–9)
 
-        ST R0, WORDLEN         ; Store length
+        ST R0, WORDLEN         ; Store the length
 
-        BRnzp DisplayUnderscores
+        AND R1, R1, #0
+        ST R1, WRONGCOUNT      ; Initialize wrong guess count to 0
 
+;******************* DisplayUnderscores *******************
+; Displays the underscore version of the word.
+; Uses WORDLEN to determine how many to show.
+; R2 - Loop counter
+; R3 - Display buffer pointer
+;*******************************************************
 DisplayUnderscores
-        LD R2, WORDLEN
-        LD R3, DISP_PTR
+        LD R2, WORDLEN         ; Load length of word
+        LD R3, DISP_PTR        ; Load display buffer start
 
 PrintLoop
-        LDR R0, R3, #0
-        OUT
+        LDR R0, R3, #0         ; Load underscore
+        OUT                    ; Print underscore
         LD R0, SPACE
-        OUT
-
-        ADD R3, R3, #1
-        ADD R2, R2, #-1
-        BRp PrintLoop
+        OUT                    ; Print space
+        ADD R3, R3, #1         ; Move to next position
+        ADD R2, R2, #-1        ; Decrement loop counter
+        BRp PrintLoop          ; Loop until all printed
 
         LD R0, NEWLN
-        OUT
+        OUT                    ; Print newline
 
+;******************* GuessLoop *******************
+; Main gameplay loop.
+; Prompts for a letter, compares it to WORD.
+; Updates DISPLAY or increments WRONGCOUNT.
+; Checks win/loss conditions.
+;************************************************
 GuessLoop
         LEA R0, PROMPT3
-        PUTS
+        PUTS                   ; Ask for a guess
 
         GETC
-        ADD R5, R0, #0         ; Save guessed letter
+        ADD R5, R0, #0         ; Save guessed letter in R5
         OUT
         LD R0, NEWLN
-        OUT
+        OUT                    ; Echo with newline
 
-        LD R2, WORD_PTR        ; R2 = word ptr
-        LD R3, DISP_PTR        ; R3 = display ptr
-        LD R6, WORDLEN
+        LD R2, WORD_PTR        ; Load WORD pointer
+        LD R3, DISP_PTR        ; Load DISPLAY pointer
+        LD R6, WORDLEN         ; Load length
+        AND R7, R7, #0         ; Clear match flag
 
+;******************* CheckGuessLoop *******************
+; Compares guessed letter R5 to each letter in WORD.
+; Updates DISPLAY if match found.
+; Sets R7 > 0 if any match was found.
+;******************************************************
 CheckGuessLoop
-        LDR R0, R2, #0         ; R0 = current letter
-        LDR R1, R3, #0         ; R1 = current display letter
+        LDR R0, R2, #0         ; Load letter from WORD
+        LDR R1, R3, #0         ; Load current DISPLAY letter
 
         NOT R4, R0
-        ADD R4, R4, #1
+        ADD R4, R4, #1         ; R4 = -R0
         ADD R4, R4, R5         ; R4 = guessed - actual
-        BRnp NoMatch
+        BRnp NoMatch           ; If not zero, no match
 
-        STR R5, R3, #0         ; Store guess into display
+        STR R5, R3, #0         ; Store guess in DISPLAY
+        ADD R7, R7, #1         ; Set match flag
 
 NoMatch
-        ADD R2, R2, #1
-        ADD R3, R3, #1
-        ADD R6, R6, #-1
-        BRp CheckGuessLoop
+        ADD R2, R2, #1         ; Move to next letter in WORD
+        ADD R3, R3, #1         ; Move to next letter in DISPLAY
+        ADD R6, R6, #-1        ; Decrease counter
+        BRp CheckGuessLoop     ; Loop over all letters
 
-        ; Print updated display
+;******************* WrongGuessCheck *******************
+; If R7 == 0, increment WRONGCOUNT.
+; If WRONGCOUNT == 6, player loses.
+;******************************************************
+        ADD R0, R7, #0
+        BRp SkipWrongIncrement ; If match found, skip wrong guess
+
+        LD R0, WRONGCOUNT
+        ADD R0, R0, #1         ; WRONGCOUNT++
+        ST R0, WRONGCOUNT
+
+        ADD R1, R0, #-6        ; Compare to 6
+        LEA R0, WRONG
+        PUTS                   ; Print "Not in word"
+        BRnp SkipWrongIncrement ; If less than 6, continue game
+
+        LEA R0, LOSE_MSG
+        PUTS                   ; Print loss message
+        HALT                   ; Game over
+
+;******************* SkipWrongIncrement *******************
+; Prints current DISPLAY buffer (underscores and correct guesses).
+;******************************************************
+SkipWrongIncrement
         LD R6, WORDLEN
         LD R3, DISP_PTR
 
 PrintDisplay
         LDR R0, R3, #0
-        OUT
+        OUT                    ; Print letter
         LD R0, SPACE
         OUT
-
         ADD R3, R3, #1
         ADD R6, R6, #-1
         BRp PrintDisplay
 
         LD R0, NEWLN
         OUT
-        BRnzp GuessLoop
 
+;******************* WinCheckLoop *******************
+; Scans DISPLAY for underscores.
+; If none, player wins.
+;***************************************************
+        LD R2, DISP_PTR
+        LD R6, WORDLEN
+        AND R7, R7, #0         ; Clear underscore flag
+
+WinCheckLoop
+        LDR R0, R2, #0         ; Load character from DISPLAY
+        LD R1, UNDERSCORE
+        NOT R1, R1
+        ADD R1, R1, #1         ; R1 = -'_'
+        ADD R1, R0, R1         ; R1 = current - '_'
+        BRnp NoUnderscore
+
+        ADD R7, R7, #1         ; Underscore found
+
+NoUnderscore
+        ADD R2, R2, #1
+        ADD R6, R6, #-1
+        BRp WinCheckLoop
+
+        ADD R0, R7, #0
+        BRz PlayerWins         ; No underscores left = win
+
+        BRnzp GuessLoop        ; Continue guessing
+
+;******************* PlayerWins *******************
+; Prints win message and stops the game
+;*************************************************
+PlayerWins
+        LEA R0, WIN_MSG
+        PUTS
         HALT
 
-; -------------------- DATA ---------------------
+;******************* DATA SECTION *******************
 
 PROMPT1     .STRINGZ "Player One: enter the word (then press ENTER):\n"
 PROMPT2     .STRINGZ "Enter the length of the word (1-9): "
 PROMPT3     .STRINGZ "Guess a letter: "
+WIN_MSG     .STRINGZ "\nYou win!\n"
+LOSE_MSG    .STRINGZ "\nYou lose!\n"
+WRONG       .STRINGZ "\nNot in word\n"
+;characters used
+UNDERSCORE  .FILL x005F    ; ASCII '_'
+SPACE       .FILL x0020    ; ASCII space
+NEWLN       .FILL x000A    ; ASCII newline
+ASCII_ZERO  .FILL x0030    ; ASCII '0'
+;memory
+WORDLEN     .FILL x0000    ; Stores user-input word length
+WRONGCOUNT  .FILL x0000    ; Tracks wrong guesses
 
-UNDERSCORE  .FILL x005F
-SPACE       .FILL x0020
-NEWLN       .FILL x000A
-ASCII_ZERO  .FILL x0030
-
-WORDLEN     .FILL x0000
-
-; Fixed memory pointers
-WORD_PTR    .FILL x3100
-DISP_PTR    .FILL x3120
+WORD_PTR    .FILL x3100    ; Pointer to word buffer in memory
+DISP_PTR    .FILL x3120    ; Pointer to display buffer in memory
 
         .END
