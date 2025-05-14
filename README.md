@@ -1,1 +1,2 @@
 # CS155-Hangman-Final
+This will hopefully be a working hangman game in which After pasting the code in an LC-3 simulator and setting the breakpoint at HALT, One player can create the word that needs to be guessed. Player 2 will have to guess what the word is letter by letter. The hangman game will update the underscores representing the word that needs to be guessed with correct choices while counting wrong guesses. There can be 6 wrong guesses before Player 2 loses the game.
