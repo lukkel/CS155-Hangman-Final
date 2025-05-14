@@ -62,13 +62,13 @@ AskLength
         ST R0, WORDLEN        ; Store the length
 
         AND R1, R1, #0
-        ST R1, WRONGCOUNT     ; Initialize wrong guess count to 0
+        ST R1, WRONGCOUNT     ; Initialize wrong guess to 0
 
 ;******************* DisplayUnderscores *******************
 ; Displays the underscore version of the word.
 ; Uses WORDLEN to determine how many to show.
 ; R2 - Loop counter
-; R3 - Display buffer pointer
+; R3 - Display buffer
 ;*******************************************************
 DisplayUnderscores
         LD R2, WORDLEN         ; Load length of word
@@ -100,7 +100,7 @@ GuessLoop
         ADD R5, R0, #0        ; Save guessed letter in R5
         OUT
         LD R0, NEWLN
-        OUT                   ; Echo with newline
+        OUT                   ; prints with newline
 
         LD R2, WORD        ; Load WORD 
         LD R3, DISPLAY        ; Load DISPLAY
@@ -205,7 +205,7 @@ PlayerWins
         PUTS
         HALT
 
-;******************* DATA SECTION *******************
+;******************* PROMPTS AND STUFF *******************
 
 PROMPT1     .STRINGZ "Player One: enter the word (then press ENTER):\n"
 PROMPT2     .STRINGZ "Enter the length of the word (1-9): "
@@ -219,10 +219,10 @@ SPACE       .FILL x0020    ; ASCII space
 NEWLN       .FILL x000A    ; ASCII newline
 ASCII_ZERO  .FILL x0030    ; ASCII '0'
 ;memory
-WORDLEN     .FILL x0000    ; Stores user-input word length
+WORDLEN     .FILL x0000    ; Stores word length
 WRONGCOUNT  .FILL x0000    ; Tracks wrong guesses
 
-WORD    .FILL x3100    ; Pointer to word buffer in memory
-DISPLAY    .FILL x3120    ; Pointer to display buffer in memory
+WORD    .FILL x3100    ; Word buffer in memory
+DISPLAY    .FILL x3120    ; Display buffer in memory
 
         .END
