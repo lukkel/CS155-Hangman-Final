@@ -1,0 +1,134 @@
+         .ORIG x3000
+
+; --- Prompt Player One for the secret word ---
+        LEA R0, PROMPT1
+        PUTS
+
+        LD R2, WORD_PTR        ; R2 = word buffer
+        LD R3, DISP_PTR        ; R3 = display buffer
+        LD R4, UNDERSCORE      ; R4 = ASCII '_'
+
+InputLoop
+   GETC
+   ADD R1, R0, #-10       ; Enter pressed?
+   BRz AskLength
+
+   STR R0, R2, #0         ; Store char in word
+   STR R4, R3, #0         ; Store _ in display
+
+   LD R0, UNDERSCORE
+   OUT
+   LD R0, SPACE
+   OUT
+
+   ADD R2, R2, #1
+   ADD R3, R3, #1
+   BRnzp InputLoop
+
+AskLength
+   AND R0, R0, #0
+   STR R0, R2, #0         ; Null-terminate word
+   STR R0, R3, #0         ; Null-terminate display
+
+   LEA R0, PROMPT2
+   PUTS
+
+   GETC
+   OUT                    ; Echo input
+
+   ; Convert ASCII digit to integer
+   LD R1, ASCII_ZERO
+   NOT R1, R1
+   ADD R1, R1, #1         ; R1 = -ASCII_ZERO
+   ADD R0, R0, R1         ; R0 = ASCII input - '0'
+
+        ST R0, WORDLEN         ; Store length
+
+        BRnzp DisplayUnderscores
+
+DisplayUnderscores
+        LD R2, WORDLEN
+        LD R3, DISP_PTR
+
+PrintLoop
+        LDR R0, R3, #0
+        OUT
+        LD R0, SPACE
+        OUT
+
+        ADD R3, R3, #1
+        ADD R2, R2, #-1
+        BRp PrintLoop
+
+        LD R0, NEWLN
+        OUT
+
+GuessLoop
+        LEA R0, PROMPT3
+        PUTS
+
+        GETC
+        ADD R5, R0, #0         ; Save guessed letter
+        OUT
+        LD R0, NEWLN
+        OUT
+
+        LD R2, WORD_PTR        ; R2 = word ptr
+        LD R3, DISP_PTR        ; R3 = display ptr
+        LD R6, WORDLEN
+
+CheckGuessLoop
+        LDR R0, R2, #0         ; R0 = current letter
+        LDR R1, R3, #0         ; R1 = current display letter
+
+        NOT R4, R0
+        ADD R4, R4, #1
+        ADD R4, R4, R5         ; R4 = guessed - actual
+        BRnp NoMatch
+
+        STR R5, R3, #0         ; Store guess into display
+
+NoMatch
+        ADD R2, R2, #1
+        ADD R3, R3, #1
+        ADD R6, R6, #-1
+        BRp CheckGuessLoop
+
+        ; Print updated display
+        LD R6, WORDLEN
+        LD R3, DISP_PTR
+
+PrintDisplay
+        LDR R0, R3, #0
+        OUT
+        LD R0, SPACE
+        OUT
+
+        ADD R3, R3, #1
+        ADD R6, R6, #-1
+        BRp PrintDisplay
+
+        LD R0, NEWLN
+        OUT
+        BRnzp GuessLoop
+
+        HALT
+
+; -------------------- DATA ---------------------
+
+PROMPT1     .STRINGZ "Player One: enter the word (then press ENTER):\n"
+PROMPT2     .STRINGZ "Enter the length of the word (1-9): "
+PROMPT3     .STRINGZ "Guess a letter: "
+
+UNDERSCORE  .FILL x005F
+SPACE       .FILL x0020
+NEWLN       .FILL x000A
+ASCII_ZERO  .FILL x0030
+
+WORDLEN     .FILL x0000
+
+; Fixed memory pointers
+WORD_PTR    .FILL x3100
+DISP_PTR    .FILL x3120
+
+        .END
