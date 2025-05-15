@@ -51,7 +51,7 @@ AskLength
         LEA R0, PROMPT2
         PUTS                  ; Ask for word length
 
-        GETC                   ; Get ASCII digit (e.g., '5')
+        GETC                   ; Get ASCII digit
         OUT                   ; Spits it out
 
         LD R1, ASCII_ZERO
